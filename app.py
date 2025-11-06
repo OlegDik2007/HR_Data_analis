@@ -39,13 +39,26 @@ def find_date_column(df):
         return None
     return date_columns[0]
 
+def _coerce_dt_and_period_to_str(df: pd.DataFrame) -> pd.DataFrame:
+    """Безопасно приводит datetime/period колонки к строкам (для Plotly/JSON)."""
+    df = df.copy()
+    for c in df.columns:
+        if pd.api.types.is_datetime64_any_dtype(df[c]):
+            df[c] = df[c].dt.strftime('%Y-%m-%d')
+        # PeriodDtype доступен не всегда, поэтому проверяем через astype-трюк
+        try:
+            if str(df[c].dtype).startswith("period"):
+                df[c] = df[c].astype(str)
+        except Exception:
+            pass
+    return df
+
 # Функция для работы с фильтром по годам (обновлённая и более безопасная)
 def apply_year_filter(df, selected_year):
     """Применяет фильтр по году к DataFrame"""
     if selected_year == "Все время":
         return df
 
-    # normalize to int if possible
     try:
         selected_year = int(selected_year)
     except:
@@ -267,17 +280,26 @@ def detailed_hiring_analysis(df):
             st.write(f"**Временные столбцы:** {time_columns}")
             for time_col in time_columns:
                 try:
+                    df = df.copy()
                     df[time_col] = pd.to_datetime(df[time_col], errors='coerce')
                     df_time = df.dropna(subset=[time_col])
                     if len(df_time) > 0:
                         st.write(f"**Анализ столбца:** {time_col}")
-                        df_time['Месяц'] = df_time[time_col].dt.to_period('M')
+
+                        # ВАЖНО: Period -> str
+                        df_time['Месяц'] = df_time[time_col].dt.to_period('M').astype(str)
                         monthly_data = df_time.groupby(['Месяц', main_hiring_col]).size().unstack(fill_value=0)
+
                         recent_months = monthly_data.tail(24)
+                        # Безопасная сериализация
+                        recent_months = _coerce_dt_and_period_to_str(recent_months.reset_index()).set_index('Месяц')
+
                         fig = px.line(recent_months, title=f"Тренд найма по месяцам ({time_col})", labels={'value': 'Количество', 'index': 'Месяц'})
                         st.plotly_chart(fig, width="stretch")
+
                         df_time['Год'] = df_time[time_col].dt.year
                         yearly_data = df_time.groupby(['Год', main_hiring_col]).size().unstack(fill_value=0)
+                        yearly_data = _coerce_dt_and_period_to_str(yearly_data.reset_index()).set_index('Год')
                         fig = px.bar(yearly_data, title=f"Распределение по годам ({time_col})", barmode='group')
                         st.plotly_chart(fig, width="stretch")
                 except Exception as e:
@@ -309,7 +331,6 @@ def analyze_tenure(df):
         for col in tenure_columns:
             st.write(f"**Анализ столбца: {col}**")
             tenure_stats = df[col].describe()
-            st.write("Статистики продолжительности работы:")
             st.dataframe(tenure_stats)
             fig = px.histogram(df, x=col, title=f"Распределение продолжительности работы ({col})", labels={'x': col, 'y': 'Количество'})
             st.plotly_chart(fig, width="stretch")
@@ -369,10 +390,7 @@ def build_ml_model(df):
 
             with col2:
                 st.write("**2. Альтернативный анализ**")
-                st.write("Вместо ML модели можно провести:")
-                st.write("• Анализ корреляций")
-                st.write("• Статистический анализ")
-                st.write("• Визуализация зависимостей")
+                st.write("• Анализ корреляций\n• Статистический анализ\n• Визуализация зависимостей")
                 if st.button("Перейти к корреляционному анализу"):
                     st.subheader("🔗 Корреляционный анализ")
                     numeric_cols = df_clean.select_dtypes(include=[np.number]).columns
@@ -807,8 +825,9 @@ def compare_years_analysis(df, selected_years):
 
     df = df.copy()
     df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
-    df['__year__'] = df[date_col].dt.year
-    df['__month__'] = df[date_col].dt.to_period('M')
+    df['__year__']  = df[date_col].dt.year
+    # ВАЖНО: Period -> str
+    df['__month__'] = df[date_col].dt.to_period('M').astype(str)
 
     cdf = df[df['__year__'].isin(selected_years)].copy()
     if cdf.empty:
@@ -840,13 +859,17 @@ def compare_years_analysis(df, selected_years):
     st.dataframe(pd.DataFrame(kpi_rows), use_container_width=True)
 
     totals = cdf.groupby('__year__').size().reset_index(name='Количество')
+    totals = _coerce_dt_and_period_to_str(totals)
     fig = px.bar(totals, x='__year__', y='Количество', title="Количество заявок по годам")
     st.plotly_chart(fig, use_container_width=True)
 
     monthly = (cdf.dropna(subset=['__month__'])
                  .groupby(['__month__', '__year__']).size()
-                 .reset_index(name='Заявок')
-               ).sort_values('__month__')
+                 .reset_index(name='Заявок'))
+    # Сохраняем хронологический порядок месяцев
+    monthly['_order'] = pd.to_datetime(monthly['__month__'] + "-01", errors='coerce')
+    monthly = monthly.sort_values('_order')
+    monthly = _coerce_dt_and_period_to_str(monthly)
     fig = px.line(monthly, x='__month__', y='Заявок', color='__year__',
                   title="Месячная динамика по выбранным годам",
                   labels={'__month__': 'Месяц'})
@@ -857,6 +880,7 @@ def compare_years_analysis(df, selected_years):
         status_df = (cdf.assign(_status=cdf[status_col].astype(str).fillna("Unknown"))
                        .groupby(['__year__', '_status']).size()
                        .reset_index(name='Count'))
+        status_df = _coerce_dt_and_period_to_str(status_df)
         fig = px.bar(status_df, x='__year__', y='Count', color='_status',
                      title="Статусы по годам (стек)", barmode='stack')
         st.plotly_chart(fig, use_container_width=True)
@@ -881,7 +905,6 @@ def run_app(df):
     """Единое место для сайдбара, фильтров и роутинга страниц (чтобы не дублировать код)."""
     st.success(f"✅ Данные загружены! Размер: {df.shape[0]} строк × {df.shape[1]} столбцов")
 
-    # Информация о загруженных данных
     st.info(f"""
     📊 **Загруженные данные:**
     - **Записей:** {df.shape[0]:,}
@@ -894,16 +917,14 @@ def run_app(df):
     st.sidebar.markdown("---")
     st.sidebar.title("📅 Фильтр по годам")
 
-    available_years = get_available_years(df)  # includes "Все время"
+    available_years = get_available_years(df)
 
-    # Single-year filter (for regular pages)
     selected_year = st.sidebar.selectbox(
         "Год для одиночного анализа:",
         available_years,
         help="Выберите конкретный год или 'Все время' для анализа всех данных"
     )
 
-    # Multi-year compare (up to 4)
     years_only = [y for y in available_years if y != "Все время"]
     compare_years_selected = st.sidebar.multiselect(
         "Сравнить годы (до 4):",
@@ -912,7 +933,6 @@ def run_app(df):
         help="Выберите до 4 лет для сравнения"
     )
 
-    # Apply single-year filter for non-compare pages
     filtered_df = apply_year_filter(df, selected_year)
 
     # ---- Навигация по разделам ----
@@ -945,7 +965,6 @@ def run_app(df):
     elif page == "Машинное обучение":
         build_ml_model(filtered_df)
     elif page == "Сравнение лет":
-        # Для сравнения используем исходный df (без одиночного фильтра)
         compare_years_analysis(df, compare_years_selected)
 
 # ==========================
