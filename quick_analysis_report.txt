@@ -1,0 +1,54 @@
+БЫСТРЫЙ ОТЧЕТ ПО АНАЛИЗУ ДАННЫХ О НАЙМЕ СОТРУДНИКОВ
+============================================================
+
+Дата анализа: 2025-09-04 15:09:19
+Файл: merge-csv.com__68b9ee302f5dd.csv
+Размер данных: 14,387 строк × 25 столбцов
+
+СТАТУС НАЙМА:
+- No Response: 4,247 (29.5%)
+- Not Qualified: 1,876 (13.0%)
+- Future Leads: 1,423 (9.9%)
+- Terminated: 987 (6.9%)
+- New Review: 875 (6.1%)
+- Not Qualified - MVR PSP: 534 (3.7%)
+- Active: 500 (3.5%)
+- Not interested - Other: 454 (3.2%)
+- Not interested - Haul Type: 414 (2.9%)
+- Recruiting: 290 (2.0%)
+- Not Qualified - Review: 278 (1.9%)
+- Approved: 276 (1.9%)
+- Reapply: 249 (1.7%)
+- Approved - Not interested: 230 (1.6%)
+- Attempting Contact: 225 (1.6%)
+- Not interested - Other Job: 210 (1.5%)
+- Not interested - W2: 194 (1.3%)
+- Not interested - Hometime: 190 (1.3%)
+- New: 175 (1.2%)
+- Not interested - Expenses: 143 (1.0%)
+- Not interested - Lease Cost: 115 (0.8%)
+- Not interested - Policy: 108 (0.8%)
+- Not Qualified - Experience: 104 (0.7%)
+- Orientation Scheduled: 87 (0.6%)
+- Terminated - Not Re-Hireable: 81 (0.6%)
+- Not interested - Paperwork: 76 (0.5%)
+- Not Interested - Do Not Contact: 46 (0.3%)
+
+ДОЛЖНОСТИ:
+- Company Driver: 11,144 (77.5%)
+- Lease Driver: 1,375 (9.6%)
+- Lease Purchase: 762 (5.3%)
+- Owner/Operator: 590 (4.1%)
+- Team Drivers: 314 (2.2%)
+
+ТОП-10 ШТАТОВ:
+- FL: 1,879 (13.1%)
+- TX: 1,470 (10.2%)
+- GA: 934 (6.5%)
+- IL: 878 (6.1%)
+- NY: 790 (5.5%)
+- NC: 652 (4.5%)
+- PA: 643 (4.5%)
+- CA: 534 (3.7%)
+- OH: 524 (3.6%)
+- MS: 361 (2.5%)
